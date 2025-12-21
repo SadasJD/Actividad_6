@@ -5,16 +5,9 @@ include 'db.php';
 $error = '';
 $success = '';
 
-// Lista de preguntas de seguridad
-$preguntas_seguridad = [
-    '¿Cuál es el nombre de tu primera mascota?',
-    '¿Cuál es tu comida favorita?',
-    '¿En qué ciudad naciste?',
-    '¿Cuál es el segundo nombre de tu padre?',
-    '¿Cuál era tu apodo de niño?',
-    '¿Cuál es el nombre de tu abuela materna?',
-    '¿Cuál es tu película favorita?'
-];
+// Lista de preguntas de seguridad (Obtenidas aleatoriamente de la BD)
+$stmt_preguntas = $pdo->query("SELECT id, pregunta FROM preguntas_seguridad ORDER BY RAND() LIMIT 3");
+$preguntas_random = $stmt_preguntas->fetchAll();
 
 // Cargar roles para el formulario
 $stmt_roles = $pdo->query("SELECT id, nombre FROM roles ORDER BY nombre");
@@ -30,17 +23,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $clave = $_POST['clave'];
     $confirmar_clave = $_POST['confirmar_clave'];
     $rol_id = $_POST['rol_id'];
-    $pregunta1 = !empty($_POST['pregunta1']) ? $_POST['pregunta1'] : null;
-    $respuesta1 = !empty($_POST['respuesta1']) ? trim($_POST['respuesta1']) : null;
-    $pregunta2 = !empty($_POST['pregunta2']) ? $_POST['pregunta2'] : null;
-    $respuesta2 = !empty($_POST['respuesta2']) ? trim($_POST['respuesta2']) : null;
+    
+    $preguntas_ids = $_POST['pregunta_id'] ?? [];
+    $respuestas = $_POST['respuesta'] ?? [];
+
+    // Validar respuestas
+    $respuestas_validas = 0;
+    foreach ($respuestas as $resp) {
+        if (!empty(trim($resp))) {
+            $respuestas_validas++;
+        }
+    }
 
     if (empty($cedula) || empty($nombres) || empty($apellidos) || empty($correo) || empty($telefono) || empty($clave) || empty($rol_id)) {
         $error = 'Todos los campos básicos son obligatorios.';
-    } elseif (($pregunta1 && !$respuesta1) || ($pregunta2 && !$respuesta2)) {
-        $error = 'Debe proporcionar una respuesta para cada pregunta de seguridad seleccionada.';
-    } elseif ($pregunta1 && $pregunta1 === $pregunta2) {
-        $error = 'Las preguntas de seguridad deben ser diferentes.';
+    } elseif ($respuestas_validas < 3) {
+        $error = 'Debe responder las 3 preguntas de seguridad.';
     } elseif ($clave !== $confirmar_clave) {
         $error = 'Las contraseñas no coinciden.';
     } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
@@ -55,15 +53,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Hashear la contraseña
             $clave_hasheada = password_hash($clave, PASSWORD_DEFAULT);
 
-            // Insertar el nuevo usuario
-            $stmt_insert = $pdo->prepare(
-                "INSERT INTO usuarios (cedula, nombres, apellidos, correo, telefono, clave, rol_id, estado, pregunta1, respuesta1, pregunta2, respuesta2) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'activo', ?, ?, ?, ?)"
-            );
-            
-            if ($stmt_insert->execute([$cedula, $nombres, $apellidos, $correo, $telefono, $clave_hasheada, $rol_id, $pregunta1, $respuesta1, $pregunta2, $respuesta2])) {
+            try {
+                $pdo->beginTransaction();
+
+                // Insertar el nuevo usuario
+                $stmt_insert = $pdo->prepare(
+                    "INSERT INTO usuarios (cedula, nombres, apellidos, correo, telefono, clave, rol_id, estado) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'activo')"
+                );
+                
+                $stmt_insert->execute([$cedula, $nombres, $apellidos, $correo, $telefono, $clave_hasheada, $rol_id]);
+                $usuario_id = $pdo->lastInsertId();
+
+                // Insertar respuestas de seguridad
+                $stmt_respuestas = $pdo->prepare("INSERT INTO respuestas_seguridad_usuario (usuario_id, pregunta_id, respuesta) VALUES (?, ?, ?)");
+                
+                foreach ($preguntas_ids as $index => $p_id) {
+                    if (isset($respuestas[$index])) {
+                        $resp_texto = trim($respuestas[$index]);
+                        // Guardar respuesta hasheada y en minúsculas
+                        $resp_hash = password_hash(strtolower($resp_texto), PASSWORD_DEFAULT);
+                        $stmt_respuestas->execute([$usuario_id, $p_id, $resp_hash]);
+                    }
+                }
+
+                $pdo->commit();
                 $success = '¡Registro exitoso! Ahora puedes <a href="login.php">iniciar sesión</a>.';
-            } else {
+            } catch (Exception $e) {
+                $pdo->rollBack();
                 $error = 'Hubo un error al crear tu cuenta. Por favor, inténtalo de nuevo.';
             }
         }
@@ -147,39 +164,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
                 </div>
 
-                <h4 class="text-center my-4">Preguntas de Seguridad</h4>
+                <h4 class="text-center my-4">Preguntas de Seguridad (Aleatorias)</h4>
+                <p class="text-muted small text-center">Responde estas 3 preguntas para proteger tu cuenta.</p>
 
-                <div class="form-floating mb-3">
-                    <select class="form-select" id="pregunta1" name="pregunta1">
-                        <option value="" selected>No establecer primera pregunta</option>
-                        <?php foreach ($preguntas_seguridad as $pregunta): ?>
-                            <option value="<?= htmlspecialchars($pregunta) ?>" <?= (isset($_POST['pregunta1']) && $_POST['pregunta1'] == $pregunta) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($pregunta) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <label for="pregunta1">Pregunta 1</label>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="respuesta1" name="respuesta1" placeholder="Respuesta a la pregunta 1" value="<?= htmlspecialchars($_POST['respuesta1'] ?? '') ?>">
-                    <label for="respuesta1">Respuesta 1</label>
-                </div>
-
-                <div class="form-floating mb-3">
-                    <select class="form-select" id="pregunta2" name="pregunta2">
-                        <option value="" selected>No establecer segunda pregunta</option>
-                        <?php foreach ($preguntas_seguridad as $pregunta): ?>
-                            <option value="<?= htmlspecialchars($pregunta) ?>" <?= (isset($_POST['pregunta2']) && $_POST['pregunta2'] == $pregunta) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($pregunta) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <label for="pregunta2">Pregunta 2</label>
-                </div>
-                <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="respuesta2" name="respuesta2" placeholder="Respuesta a la pregunta 2" value="<?= htmlspecialchars($_POST['respuesta2'] ?? '') ?>">
-                    <label for="respuesta2">Respuesta 2</label>
-                </div>
+                <?php foreach ($preguntas_random as $index => $p): ?>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold"><?= htmlspecialchars($p['pregunta']) ?></label>
+                        <input type="hidden" name="pregunta_id[]" value="<?= $p['id'] ?>">
+                        <input type="text" class="form-control" name="respuesta[]" placeholder="Tu respuesta" required>
+                    </div>
+                <?php endforeach; ?>
                 
                 <button type="submit" class="btn btn-primary w-100">Registrarse</button>
             </form>

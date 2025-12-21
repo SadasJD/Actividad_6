@@ -2,7 +2,7 @@
 function verificar_acceso($rol) {
     $permisos = [
         'Admin' => [
-            'index.php',
+            'principal.php',
             'productos.php',
             'agregar_producto.php',
             'editar_producto.php',
@@ -24,7 +24,7 @@ function verificar_acceso($rol) {
             'logout.php'
         ],
         'Vendedor' => [
-            'index.php',
+            'principal.php',
             'productos.php',
             'proveedores.php',
             'detalle_proveedor.php',
@@ -36,12 +36,12 @@ function verificar_acceso($rol) {
 
     if (isset($permisos[$rol])) {
         if (!in_array($pagina_actual, $permisos[$rol])) {
-            header('Location: index.php?error=acceso_denegado');
+            header('Location: principal.php?error=acceso_denegado');
             exit;
         }
     } else {
         // Si el rol no existe en la lista de permisos, denegar por defecto
-        header('Location: index.php?error=rol_invalido');
+        header('Location: principal.php?error=rol_invalido');
         exit;
     }
 }

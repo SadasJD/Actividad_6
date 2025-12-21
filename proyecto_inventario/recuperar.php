@@ -68,10 +68,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['elegir_metodo'])) {
         $metodo = $_POST['metodo'];
 
         if ($metodo == 'preguntas') {
-            if (empty($usuario['pregunta1']) || empty($usuario['pregunta2'])) {
-                $error = 'No tienes preguntas de seguridad configuradas. Por favor, elige otro método o contacta al administrador.';
-            } else {
+            // Fetch questions from DB (New System)
+            $stmt_preguntas = $pdo->prepare("
+                SELECT ps.id, ps.pregunta 
+                FROM respuestas_seguridad_usuario rsu 
+                JOIN preguntas_seguridad ps ON rsu.pregunta_id = ps.id 
+                WHERE rsu.usuario_id = ?
+            ");
+            $stmt_preguntas->execute([$usuario['id']]);
+            $preguntas_usuario = $stmt_preguntas->fetchAll(PDO::FETCH_ASSOC);
+
+            if (count($preguntas_usuario) >= 3) {
+                $_SESSION['preguntas_recuperacion'] = $preguntas_usuario;
                 $paso = 'preguntas';
+            } elseif (!empty($usuario['pregunta1']) && !empty($usuario['pregunta2'])) {
+                // Legacy support for old users
+                $paso = 'preguntas_legacy';
+            } else {
+                $error = 'No tienes preguntas de seguridad configuradas correctamente. Contacta al administrador.';
             }
         } elseif ($metodo == 'otp') {
             $otp = rand(100000, 999999);
@@ -89,20 +103,52 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['elegir_metodo'])) {
 
 // Validar respuestas de seguridad
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['validar_respuestas'])) {
-    $paso = 'preguntas';
     if (isset($_SESSION['recuperacion_id_usuario'])) {
-        $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ?");
-        $stmt->execute([$_SESSION['recuperacion_id_usuario']]);
-        $usuario = $stmt->fetch();
+        if (isset($_SESSION['preguntas_recuperacion'])) {
+            // Nuevo sistema (3 preguntas)
+            $paso = 'preguntas';
+            $stmt_respuestas = $pdo->prepare("
+                SELECT pregunta_id, respuesta 
+                FROM respuestas_seguridad_usuario 
+                WHERE usuario_id = ?
+            ");
+            $stmt_respuestas->execute([$_SESSION['recuperacion_id_usuario']]);
+            $respuestas_db = $stmt_respuestas->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        $respuesta1 = trim($_POST['respuesta1']);
-        $respuesta2 = trim($_POST['respuesta2']);
+            $respuestas_usuario = $_POST['respuesta'] ?? [];
+            $validas = 0;
+            $total_preguntas = count($respuestas_db);
 
-        if (strcasecmp(trim($usuario['respuesta1']), $respuesta1) === 0 && strcasecmp(trim($usuario['respuesta2']), $respuesta2) === 0) {
-            $_SESSION['recuperacion_validada'] = true;
-            $paso = 3;
+            foreach ($respuestas_usuario as $p_id => $resp_texto) {
+                if (isset($respuestas_db[$p_id])) {
+                    if (password_verify(strtolower(trim($resp_texto)), $respuestas_db[$p_id])) {
+                        $validas++;
+                    }
+                }
+            }
+
+            if ($validas === $total_preguntas && $validas >= 3) {
+                $_SESSION['recuperacion_validada'] = true;
+                $paso = 3;
+            } else {
+                $error = 'Una o más respuestas son incorrectas.';
+            }
         } else {
-            $error = 'Una o ambas respuestas son incorrectas.';
+            // Sistema antiguo (Legacy)
+            $paso = 'preguntas_legacy';
+            $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ?");
+            $stmt->execute([$_SESSION['recuperacion_id_usuario']]);
+            $usuario = $stmt->fetch();
+
+            $respuesta1 = trim($_POST['respuesta1']);
+            $respuesta2 = trim($_POST['respuesta2']);
+
+            if (strcasecmp(trim($usuario['respuesta1']), $respuesta1) === 0 && strcasecmp(trim($usuario['respuesta2']), $respuesta2) === 0) {
+                $_SESSION['recuperacion_validada'] = true;
+                $paso = 3;
+            } else {
+                $error = 'Una o ambas respuestas son incorrectas.';
+            }
         }
     }
 }
@@ -207,7 +253,18 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_SESSION['recuperacion_id_usu
                         <button type="submit" name="metodo" value="otp" class="btn btn-info">Enviar Código a mi Teléfono</button>
                     </div>
                 </form>
-            <?php elseif ($paso == 'preguntas' && $usuario): ?>
+            <?php elseif ($paso == 'preguntas' && isset($_SESSION['preguntas_recuperacion'])): ?>
+                <p>Responde tus preguntas de seguridad para continuar.</p>
+                <form action="recuperar.php" method="post">
+                    <?php foreach ($_SESSION['preguntas_recuperacion'] as $p): ?>
+                        <div class="mb-3">
+                            <label class="form-label"><strong><?= htmlspecialchars($p['pregunta']) ?></strong></label>
+                            <input type="text" class="form-control" name="respuesta[<?= $p['id'] ?>]" required>
+                        </div>
+                    <?php endforeach; ?>
+                    <button type="submit" name="validar_respuestas" class="btn btn-primary w-100">Verificar</button>
+                </form>
+            <?php elseif ($paso == 'preguntas_legacy' && $usuario): ?>
                 <p>Responde tus preguntas de seguridad para continuar.</p>
                 <form action="recuperar.php" method="post">
                     <div class="mb-3">

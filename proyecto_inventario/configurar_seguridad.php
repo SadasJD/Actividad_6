@@ -29,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $respuestas = $_POST['respuestas'] ?? [];
     $preguntas_seleccionadas = $_POST['preguntas'] ?? [];
 
-    if (count($respuestas) < 2) {
-        $error = 'Debes configurar al menos 2 preguntas de seguridad.';
+    if (count($respuestas) < 3) {
+        $error = 'Debes configurar al menos 3 preguntas de seguridad.';
     } else {
         try {
             $pdo->beginTransaction();
@@ -73,7 +73,7 @@ include 'header.php';
         <h3>Configurar Preguntas de Seguridad</h3>
     </div>
     <div class="card-body">
-        <p>Configura tus preguntas de seguridad para poder recuperar tu cuenta si olvidas la contraseña. Te recomendamos configurar al menos 2.</p>
+        <p>Configura tus preguntas de seguridad para poder recuperar tu cuenta si olvidas la contraseña. Debes configurar al menos 3.</p>
         
         <?php if ($success): ?>
             <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
@@ -108,7 +108,7 @@ include 'header.php';
             <?php endforeach; ?>
 
             <button type="submit" class="btn btn-primary">Guardar Configuración</button>
-            <a href="index.php" class="btn btn-secondary">Volver</a>
+            <a href="principal.php" class="btn btn-secondary">Volver</a>
         </form>
     </div>
 </div>

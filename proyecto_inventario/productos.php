@@ -8,7 +8,9 @@ $prod = $pdo->query("SELECT p.*, pr.empresa, pr.logo FROM productos p LEFT JOIN 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3>Productos</h3>
   <div>
+    <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] !== 'Vendedor'): ?>
     <a href="agregar_producto.php" class="btn btn-success">Nuevo Producto</a>
+    <?php endif; ?>
   </div>
 </div>
 <div class="mb-3">
@@ -30,8 +32,10 @@ $prod = $pdo->query("SELECT p.*, pr.empresa, pr.logo FROM productos p LEFT JOIN 
         <td><?= intval($p['cantidad']) ?></td>
         <td><?= htmlspecialchars($p['estado']) ?></td>
         <td>
+          <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] !== 'Vendedor'): ?>
           <a href="editar_producto.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-primary">Editar</a>
           <a href="eliminar_producto.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">Eliminar</a>
+          <?php endif; ?>
         </td>
       </tr>
     <?php endforeach; ?>

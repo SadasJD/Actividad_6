@@ -25,7 +25,7 @@ verificar_acceso($_SESSION['usuario_rol']);
 
 <nav class="navbar navbar-expand-lg navbar-light">
   <div class="container-fluid">
-    <a class="navbar-brand" href="index.php">
+    <a class="navbar-brand" href="principal.php">
         <i class="fas fa-boxes-stacked"></i>
         Inventario
     </a>

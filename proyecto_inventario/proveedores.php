@@ -7,7 +7,9 @@ $prov = $pdo->query("SELECT * FROM proveedores")->fetchAll();
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h3>Proveedores</h3>
   <div>
+    <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] !== 'Vendedor'): ?>
     <a href="agregar_proveedor.php" class="btn btn-success">Nuevo Proveedor</a>
+    <?php endif; ?>
   </div>
 </div>
 <div class="mb-3"><span class="badge bg-primary">Total proveedores: <?= $total ?></span></div>
@@ -26,8 +28,10 @@ $prov = $pdo->query("SELECT * FROM proveedores")->fetchAll();
         <td><?= htmlspecialchars($p['ubicacion']) ?></td>
         <td><?= htmlspecialchars($p['telefono']) ?></td>
         <td>
+          <?php if (isset($_SESSION['usuario_rol']) && $_SESSION['usuario_rol'] !== 'Vendedor'): ?>
           <a href="editar_proveedor.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-primary">Editar</a>
           <a href="eliminar_proveedor.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('¿Estás seguro?')">Eliminar</a>
+          <?php endif; ?>
           <a href="detalle_proveedor.php?id=<?= $p['id'] ?>" class="btn btn-sm btn-info">Ver</a>
         </td>
       </tr>

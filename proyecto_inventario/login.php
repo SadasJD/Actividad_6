@@ -21,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION['usuario_id'] = $usuario['id'];
         $_SESSION['usuario_nombre'] = $usuario['nombres'];
         $_SESSION['usuario_rol'] = $usuario['rol_nombre']; // Guardar el nombre del rol
-        header("Location: index.php");
+        header("Location: principal.php");
         exit;
     } else {
         $error = 'Cédula o clave incorrecta.';
