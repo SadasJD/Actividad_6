@@ -1,0 +1,14 @@
+# Evitar listado de directorios
+Options -Indexes
+
+# Proteger archivos sensibles
+<FilesMatch "\.(sql|log|ini|env|config)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Proteger el archivo de seguridad propiamente dicho
+<Files "seguridad_global.php">
+    Order allow,deny
+    Deny from all
+</Files>

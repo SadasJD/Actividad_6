@@ -1,5 +1,18 @@
 <?php
 function verificar_acceso($rol) {
+    // Normalizar rol (quitar espacios, primera mayúscula)
+    $rol = trim($rol);
+    
+    // Mapeo de nombres de roles de la DB a las claves del array de permisos
+    $mapeo_roles = [
+        'Admin' => 'Admin',
+        'Administrador' => 'Admin',
+        'Vendedor' => 'Vendedor',
+        'vendedor' => 'Vendedor'
+    ];
+
+    $rol_clave = $mapeo_roles[$rol] ?? $rol;
+
     $permisos = [
         'Admin' => [
             'principal.php',
@@ -34,15 +47,22 @@ function verificar_acceso($rol) {
 
     $pagina_actual = basename($_SERVER['PHP_SELF']);
 
-    if (isset($permisos[$rol])) {
-        if (!in_array($pagina_actual, $permisos[$rol])) {
+    // Si ya estamos en principal.php y hay un error, no volver a redireccionar para evitar bucles
+    if ($pagina_actual === 'principal.php' && isset($_GET['error'])) {
+        return;
+    }
+
+    if (isset($permisos[$rol_clave])) {
+        if (!in_array($pagina_actual, $permisos[$rol_clave])) {
             header('Location: principal.php?error=acceso_denegado');
             exit;
         }
     } else {
-        // Si el rol no existe en la lista de permisos, denegar por defecto
-        header('Location: principal.php?error=rol_invalido');
-        exit;
+        // Redireccionar al login si el rol no es válido, evitando bucles en principal.php
+        if ($pagina_actual !== 'login.php') {
+            header('Location: login.php?error=rol_invalido');
+            exit;
+        }
     }
 }
 ?>

@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once 'includes/seguridad_global.php';
+// session_start(); // Ya iniciado en seguridad_global
 include 'db.php';
 
 $error = '';
@@ -14,15 +15,17 @@ $stmt_roles = $pdo->query("SELECT id, nombre FROM roles ORDER BY nombre");
 $roles = $stmt_roles->fetchAll();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    verificar_csrf();
     // Validaciones básicas del lado del servidor
-    $cedula = trim($_POST['cedula']);
-    $nombres = trim($_POST['nombres']);
-    $apellidos = trim($_POST['apellidos']);
-    $correo = trim($_POST['correo']);
-    $telefono = trim($_POST['telefono']);
-    $clave = $_POST['clave'];
+    // Limpieza de datos (XSS Prevention on Input)
+    $cedula = limpiar_entrada($_POST['cedula']);
+    $nombres = limpiar_entrada($_POST['nombres']);
+    $apellidos = limpiar_entrada($_POST['apellidos']);
+    $correo = limpiar_entrada($_POST['correo']);
+    $telefono = limpiar_entrada($_POST['telefono']);
+    $clave = $_POST['clave']; // No limpiar contraseñas
     $confirmar_clave = $_POST['confirmar_clave'];
-    $rol_id = $_POST['rol_id'];
+    $rol_id = limpiar_entrada($_POST['rol_id']);
     
     $preguntas_ids = $_POST['pregunta_id'] ?? [];
     $respuestas = $_POST['respuesta'] ?? [];
@@ -41,6 +44,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $error = 'Debe responder las 3 preguntas de seguridad.';
     } elseif ($clave !== $confirmar_clave) {
         $error = 'Las contraseñas no coinciden.';
+    } elseif (strlen($clave) < 8 || !preg_match("/[A-Z]/", $clave) || !preg_match("/[a-z]/", $clave) || !preg_match("/[0-9]/", $clave)) {
+        $error = 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número.';
     } elseif (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
         $error = 'El formato del correo electrónico no es válido.';
     } else {
@@ -107,6 +112,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?php if ($error): ?><div class="alert alert-danger"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
             <form action="registro.php" method="post" id="registroForm">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-floating mb-3">

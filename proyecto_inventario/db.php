@@ -14,7 +14,8 @@ $options = [
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (PDOException $e) {
-    echo "Error de conexión: " . $e->getMessage();
-    exit;
+    // Protección de datos: No mostrar detalles técnicos del error
+    error_log("Error de BD: " . $e->getMessage()); // Guardar en log del servidor
+    die("Lo sentimos, hubo un problema de conexión con la base de datos. Por favor intente más tarde.");
 }
 ?>

@@ -49,6 +49,16 @@ body {
     box-shadow: 0 8px 12px rgba(0,0,0,.08);
 }
 
+/* Campos no seleccionables por seguridad */
+.unselectable {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 .card-title {
     color: var(--primary-color);
     font-weight: 600;

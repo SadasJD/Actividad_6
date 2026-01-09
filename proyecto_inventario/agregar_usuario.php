@@ -2,14 +2,15 @@
 include 'header.php';
 include 'db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $cedula = $_POST['cedula'] ?? '';
-    $nombres = $_POST['nombres'] ?? '';
-    $apellidos = $_POST['apellidos'] ?? '';
-    $correo = $_POST['correo'] ?? '';
-    $telefono = $_POST['telefono'] ?? '';
+    verificar_csrf();
+    $cedula = limpiar_entrada($_POST['cedula'] ?? '');
+    $nombres = limpiar_entrada($_POST['nombres'] ?? '');
+    $apellidos = limpiar_entrada($_POST['apellidos'] ?? '');
+    $correo = limpiar_entrada($_POST['correo'] ?? '');
+    $telefono = limpiar_entrada($_POST['telefono'] ?? '');
     $clave = password_hash($_POST['clave'] ?? '', PASSWORD_DEFAULT);
-    $estado = $_POST['estado'] ?? 'activo';
-    $rol_id = $_POST['rol_id'] ?? null;
+    $estado = limpiar_entrada($_POST['estado'] ?? 'activo');
+    $rol_id = limpiar_entrada($_POST['rol_id'] ?? null);
     
     $sql = "INSERT INTO usuarios (cedula, nombres, apellidos, correo, telefono, clave, estado, rol_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
@@ -20,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <h3>Nuevo Usuario</h3>
 <form method="post">
+  <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
   <div class="mb-3">
     <label class="form-label">Cédula</label>
     <input name="cedula" class="form-control" required>

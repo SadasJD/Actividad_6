@@ -2,14 +2,21 @@
 include 'header.php';
 include 'db.php';
 if ($_SERVER['REQUEST_METHOD']==='POST'){
-  $nombre = $_POST['nombre'];
-  $descripcion = $_POST['descripcion'];
-  $pdo->prepare("INSERT INTO roles (nombre, descripcion) VALUES (?, ?)")->execute([$nombre,$descripcion]);
-  header('Location: roles.php'); exit;
+  verificar_csrf();
+  $nombre = limpiar_entrada($_POST['nombre'] ?? '');
+  $descripcion = limpiar_entrada($_POST['descripcion'] ?? '');
+  
+  if (empty($nombre)) {
+    echo "<div class='alert alert-danger'>Error: El nombre del rol es obligatorio.</div>";
+  } else {
+    $pdo->prepare("INSERT INTO roles (nombre, descripcion) VALUES (?, ?)")->execute([$nombre,$descripcion]);
+    header('Location: roles.php'); exit;
+  }
 }
 ?>
 <h3>Nuevo Rol</h3>
 <form method="post">
+  <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
   <div class="mb-3">
     <label class="form-label">Nombre</label>
     <input name="nombre" class="form-control" required>

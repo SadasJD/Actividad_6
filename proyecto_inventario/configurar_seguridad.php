@@ -1,11 +1,14 @@
 <?php
-session_start();
-include 'db.php';
+require_once 'includes/seguridad_global.php';
+include 'control_acceso.php';
 
 if (!isset($_SESSION['usuario_id'])) {
     header('Location: login.php');
     exit;
 }
+
+verificar_acceso($_SESSION['usuario_rol']);
+include 'db.php';
 
 $usuario_id = $_SESSION['usuario_id'];
 $error = '';
@@ -26,6 +29,7 @@ $stmt_configuradas->execute([$usuario_id]);
 $preguntas_configuradas = $stmt_configuradas->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verificar_csrf();
     $respuestas = $_POST['respuestas'] ?? [];
     $preguntas_seleccionadas = $_POST['preguntas'] ?? [];
 
@@ -95,6 +99,7 @@ include 'header.php';
         <?php endif; ?>
 
         <form action="configurar_seguridad.php" method="post">
+            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             <p><strong>Selecciona tus preguntas y escribe las respuestas:</strong></p>
             
             <?php foreach ($preguntas_disponibles as $pregunta): ?>

@@ -1,4 +1,5 @@
 <?php
+require_once 'includes/verificar_sesion.php';
 include 'db.php';
 
 if (isset($_GET['id'])) {

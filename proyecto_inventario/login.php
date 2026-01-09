@@ -1,10 +1,15 @@
 <?php
-session_start();
+// Incluir seguridad antes que nada
+require_once 'includes/seguridad_global.php';
+
 include 'db.php';
 
 $error = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Verificar CSRF antes de procesar
+    verificar_csrf();
+
     $cedula = $_POST['cedula'];
     $clave_ingresada = $_POST['clave'];
 
@@ -20,7 +25,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($usuario && password_verify($clave_ingresada, $usuario['clave'])) {
         $_SESSION['usuario_id'] = $usuario['id'];
         $_SESSION['usuario_nombre'] = $usuario['nombres'];
+        $_SESSION['usuario_apellido'] = $usuario['apellidos'];
         $_SESSION['usuario_rol'] = $usuario['rol_nombre']; // Guardar el nombre del rol
+        $_SESSION['ultimo_acceso'] = time(); // Inicializar tiempo de acceso
+        
         header("Location: principal.php");
         exit;
     } else {
@@ -42,6 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="login-box">
             <h2 class="text-center mb-4">Acceso al Sistema</h2>
             <form action="login.php" method="post">
+                <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 <?php if ($error): ?>
                     <div class="alert alert-danger"><?= $error ?></div>
                 <?php endif; ?>

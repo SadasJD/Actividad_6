@@ -1,5 +1,8 @@
 <?php
-session_start();
+// Incluir seguridad al inicio
+require_once 'includes/seguridad_global.php';
+
+// session_start(); // Iniciado por seguridad_global
 include 'db.php';
 
 $error = '';
@@ -41,7 +44,8 @@ function enviar_otp_ultramsg($telefono, $otp) {
 
 // Paso 1: Buscar usuario
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['buscar_usuario'])) {
-    $identificador = trim($_POST['identificador']);
+    verificar_csrf();
+    $identificador = limpiar_entrada($_POST['identificador']);
     if (empty($identificador)) {
         $error = 'Por favor, ingresa tu cédula o correo electrónico.';
     } else {
@@ -60,6 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['buscar_usuario'])) {
 
 // Paso 2: Elegir método y procesar
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['elegir_metodo'])) {
+    verificar_csrf();
     $paso = 2;
     if (isset($_SESSION['recuperacion_id_usuario'])) {
         $stmt = $pdo->prepare("SELECT * FROM usuarios WHERE id = ?");
@@ -103,6 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['elegir_metodo'])) {
 
 // Validar respuestas de seguridad
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['validar_respuestas'])) {
+    verificar_csrf();
     if (isset($_SESSION['recuperacion_id_usuario'])) {
         if (isset($_SESSION['preguntas_recuperacion'])) {
             // Nuevo sistema (3 preguntas)
@@ -173,6 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['validar_otp'])) {
 
 // Paso 3: Restablecer contraseña
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['restablecer_clave'])) {
+    verificar_csrf();
     if (isset($_SESSION['recuperacion_id_usuario']) && isset($_SESSION['recuperacion_validada']) && $_SESSION['recuperacion_validada']) {
         $paso = 3;
         $clave = $_POST['clave'];
@@ -238,6 +245,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_SESSION['recuperacion_id_usu
             <?php if ($paso == 1): ?>
                 <p>Ingresa tu cédula o correo electrónico para buscar tu cuenta.</p>
                 <form action="recuperar.php" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" id="identificador" name="identificador" placeholder="Cédula o Correo" required>
                         <label for="identificador">Cédula o Correo Electrónico</label>
@@ -247,6 +255,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_SESSION['recuperacion_id_usu
             <?php elseif ($paso == 2): ?>
                 <p>Hola, <strong><?= htmlspecialchars($usuario['nombres']) ?></strong>. ¿Cómo deseas recuperar tu contraseña?</p>
                 <form action="recuperar.php" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="elegir_metodo" value="1">
                     <div class="d-grid gap-2">
                         <button type="submit" name="metodo" value="preguntas" class="btn btn-secondary">Usar Preguntas de Seguridad</button>
@@ -256,6 +265,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_SESSION['recuperacion_id_usu
             <?php elseif ($paso == 'preguntas' && isset($_SESSION['preguntas_recuperacion'])): ?>
                 <p>Responde tus preguntas de seguridad para continuar.</p>
                 <form action="recuperar.php" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <?php foreach ($_SESSION['preguntas_recuperacion'] as $p): ?>
                         <div class="mb-3">
                             <label class="form-label"><strong><?= htmlspecialchars($p['pregunta']) ?></strong></label>
@@ -289,6 +299,7 @@ if ($_SERVER["REQUEST_METHOD"] != "POST" && isset($_SESSION['recuperacion_id_usu
             <?php elseif ($paso == 3): ?>
                 <p>Ingresa tu nueva contraseña.</p>
                 <form action="recuperar.php" method="post">
+                    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <div class="form-floating mb-3">
                         <input type="password" class="form-control" id="clave" name="clave" placeholder="Nueva Contraseña" required>
                         <label for="clave">Nueva Contraseña</label>

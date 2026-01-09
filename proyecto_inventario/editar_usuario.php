@@ -13,25 +13,26 @@ $roles_stmt = $pdo->query("SELECT id, nombre FROM roles");
 $roles = $roles_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $cedula = $_POST['cedula'] ?? '';
-    $nombres = $_POST['nombres'] ?? '';
-    $apellidos = $_POST['apellidos'] ?? '';
-    $correo = $_POST['correo'] ?? '';
-    $telefono = $_POST['telefono'] ?? '';
-    $estado = $_POST['estado'] ?? 'activo';
-    $rol_id = $_POST['rol_id'] ?? null;
+    verificar_csrf();
+    // La cédula no es modificable, por lo que no la tomamos del POST para el UPDATE
+    $nombres = limpiar_entrada($_POST['nombres'] ?? '');
+    $apellidos = limpiar_entrada($_POST['apellidos'] ?? '');
+    $correo = limpiar_entrada($_POST['correo'] ?? '');
+    $telefono = limpiar_entrada($_POST['telefono'] ?? '');
+    $estado = limpiar_entrada($_POST['estado'] ?? 'activo');
+    $rol_id = limpiar_entrada($_POST['rol_id'] ?? null);
     $clave = $_POST['clave'];
 
     // Si se proporciona una nueva clave, hashearla. Si no, no actualizarla.
     if (!empty($clave)) {
         $clave_hashed = password_hash($clave, PASSWORD_DEFAULT);
-        $sql = "UPDATE usuarios SET cedula=?, nombres=?, apellidos=?, correo=?, telefono=?, clave=?, estado=?, rol_id=? WHERE id=?";
+        $sql = "UPDATE usuarios SET nombres=?, apellidos=?, correo=?, telefono=?, clave=?, estado=?, rol_id=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$cedula, $nombres, $apellidos, $correo, $telefono, $clave_hashed, $estado, $rol_id, $id]);
+        $stmt->execute([$nombres, $apellidos, $correo, $telefono, $clave_hashed, $estado, $rol_id, $id]);
     } else {
-        $sql = "UPDATE usuarios SET cedula=?, nombres=?, apellidos=?, correo=?, telefono=?, estado=?, rol_id=? WHERE id=?";
+        $sql = "UPDATE usuarios SET nombres=?, apellidos=?, correo=?, telefono=?, estado=?, rol_id=? WHERE id=?";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$cedula, $nombres, $apellidos, $correo, $telefono, $estado, $rol_id, $id]);
+        $stmt->execute([$nombres, $apellidos, $correo, $telefono, $estado, $rol_id, $id]);
     }
 
     header('Location: usuarios.php');
@@ -48,18 +49,22 @@ if (!$user) {
 }
 ?>
 
-<h3>Editar Usuario</h3>
+<h3 class="unselectable">Editar Usuario</h3>
 <form method="post">
+    <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
     <div class="row">
         <div class="col-md-6">
             <div class="mb-3">
-                <label for="cedula" class="form-label">Cédula</label>
-                <input id="cedula" name="cedula" type="text" class="form-control" value="<?= htmlspecialchars($user['cedula'] ?? '') ?>" required>
+                <label for="cedula" class="form-label unselectable">Cédula (No modificable)</label>
+                <input id="cedula" name="cedula" type="text" class="form-control unselectable" 
+                       value="<?= htmlspecialchars($user['cedula'] ?? '') ?>" 
+                       readonly 
+                       onmousedown="return false;">
             </div>
         </div>
         <div class="col-md-6">
             <div class="mb-3">
-                <label for="nombres" class="form-label">Nombres</label>
+                <label for="nombres" class="form-label unselectable">Nombres</label>
                 <input id="nombres" name="nombres" type="text" class="form-control" value="<?= htmlspecialchars($user['nombres'] ?? '') ?>" required>
             </div>
         </div>
